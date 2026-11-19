@@ -130,10 +130,11 @@ def test_exposure_is_per_camera(open_app):
 def test_rim_drawn_on_backlight_side(open_app):
     app = open_app({'room': lit_scene()})
     app.go(shot='s1')
-    r = app.js("""()=>{const P=window.__shotplans,sc=P.cur(),f=P.frameInfo(sc,sc.items.find(i=>i.id==='camA'),0,320);const cx=f.read[0].cx;
-      const rims=[...f.svg.matchAll(/<path d="M([-\\d.]+) [^"]*" fill="none" stroke="[^"]+" stroke-opacity/g)].map(m=>+m[1]);return {cx,rims}}""")
-    assert r['rims'], 'no rim drawn for a strong backlight'
-    assert all(x > r['cx'] for x in r['rims']), 'rim on the wrong side: %s vs centre %s' % (r['rims'], r['cx'])
+    # the edge light is the silhouette less a copy shifted away from the light: a light on the right shifts the copy left
+    r = app.js("""()=>{const P=window.__shotplans,sc=P.cur(),f=P.frameInfo(sc,sc.items.find(i=>i.id==='camA'),0,320);
+      return [...f.svg.matchAll(/<g fill="#000"[^>]*transform="translate\\(([-\\d.]+) /g)].map(m=>+m[1])}""")
+    assert r, 'no rim drawn for a strong backlight'
+    assert all(x < 0 for x in r), 'rim on the wrong side: %s' % r
 
 
 def test_unlit_person_flagged(open_app):

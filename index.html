@@ -366,11 +366,14 @@ function lightTerms(sc,q,cp){const d=dv(cp.r),rt=rv(cp.r),out=[];
     else if(f.type==='neg'&&dF<sz*1.5)out.push({I:-.16*near,psi:psiTo(f.x,f.y),soft:.6})}
   return out}
 // brightness at a point around the figure (th: -90° = screen-left edge, 0 = facing the lens, 90° = right edge)
-const AMB=.3;
-function shadeAt(terms,th){let L=AMB;for(const t of terms){const c0=Math.cos(th-t.psi),w=t.soft||0,c=Math.max(0,(c0+w)/(1+w));L+=t.I*(Math.abs(t.psi)>Math.PI/2?Math.min(1,c*1.6):c)}return Math.max(.08,L)}
+const AMB=.3,smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
+// a light from behind shows as edge light (rimOf), drawn along the outline; it fades out of the flat shading as it comes round
+function shadeAt(terms,th){let L=AMB;for(const t of terms){const c0=Math.cos(th-t.psi),w=t.soft||0,c=Math.max(0,(c0+w)/(1+w));L+=t.I*c*(1-smooth(.4,.62,Math.abs(t.psi)/Math.PI))}return Math.max(.08,L)}
 // edge light from behind: which screen sides get a rim, and how strong
 function rimOf(terms){let l=0,r=0;const key=terms.reduce((a,t)=>a+(t.I>0&&Math.abs(t.psi)<Math.PI*.55?t.I*Math.max(0,Math.cos(t.psi)):0),0);
-  for(const t of terms){if(t.I<=0||Math.abs(t.psi)<Math.PI*.55)continue;const s=Math.sin(t.psi),k=Math.min(1,1.4*t.I/(t.I+key+.05));if(Math.abs(s)<.35){l=Math.max(l,k*.8);r=Math.max(r,k*.8)}else if(s>0)r=Math.max(r,k);else l=Math.max(l,k)}return {l,r}}
+  for(const t of terms){if(t.I<=0)continue;const behind=smooth(.4,.62,Math.abs(t.psi)/Math.PI);if(behind<=0)continue;
+    const s=Math.sin(t.psi),k=Math.min(1,1.4*t.I/(t.I+key+.05))*behind;
+    r=Math.max(r,k*smooth(-.6,.35,s));l=Math.max(l,k*smooth(-.6,.35,-s))}return {l,r}}
 function gradDef(id,terms,col,x0,x1){let st='';for(let i=0;i<=18;i++){const th=(-88+i*176/18)*RAD,u=Math.sin(th);st+=`<stop offset="${((u+1)/2).toFixed(4)}" stop-color="${litColor(col,shadeAt(terms,th))}"/>`}
   return `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${x0}" y1="0" x2="${x1}" y2="0">${st}</linearGradient>`}
 // head: crown wider than the jaw, chin rounded
@@ -943,9 +946,10 @@ function frameInfo(sc,cam,t,Wp,opt={}){
     // person-local feet: r = to their right, f = forward. Screen x and nearness to camera follow from which way they face.
     const fc=Math.cos(phi),X=(rr,ff)=>cx+(-fc*rr+sn*ff)*k,near=(rr,ff)=>sn*rr+fc*ff,PT=(rr,ff,z)=>[X(rr,ff),Y(z)];
     const Wd=(fw,dw)=>Math.hypot(fw*fc,dw*sn)*k;
-    let g='';
+    let g='';const g0=()=>g.length;let gBody=0;
     if(seated){const sy=Y(P.seat),gy=Y(0),sx=.62*k;
       g+=`<g stroke="#8b9096" stroke-width="${Math.max(1.2,.07*k)}" stroke-linecap="round" fill="none"><path d="M${cx-sx*.75} ${sy}L${cx-sx*.95} ${gy}M${cx+sx*.75} ${sy}L${cx+sx*.95} ${gy}M${cx-sx*.25} ${sy}L${cx-sx*.3} ${gy}M${cx+sx*.25} ${sy}L${cx+sx*.3} ${gy}"/>${P.foot?`<path d="M${cx-sx*.88} ${Y(P.foot)}H${cx+sx*.88}"/>`:''}</g><ellipse cx="${cx}" cy="${sy}" rx="${sx}" ry="${Math.max(2,.1*k)}" fill="#a3a8ad"/>`}
+    gBody=g0();
     // each limb is one group of capsules: outlined together, then filled together, so joints don't show
     // the DOT/AIGA pictogram (1974, public domain): flat parts, square-ended legs,
     // arms hanging clear of the body from a broad shoulder yoke, a gap between the legs and below the head
@@ -1011,10 +1015,12 @@ function frameInfo(sc,cam,t,Wp,opt={}){
     const hR=(picto?163*u:.33)*k,hy=Y(C-(picto?163*u:.33)),prof=Math.abs(sn)>.88&&fc>-.2,sgn=Math.sign(side)||1;
     const bump=prof?`<path d="M${cx+sgn*hR*.92} ${hy+.02*k}Q${cx+sgn*(hR+.09*k)} ${hy+.1*k},${cx+sgn*hR*.9} ${hy+.17*k}Z"/>`:'';
     g+=`<g fill="${dk}" stroke="${dk}" stroke-width="${ow*2}" stroke-linejoin="round"><circle cx="${cx}" cy="${hy}" r="${hR}"/>${bump}</g><circle cx="${cx}" cy="${hy}" r="${hR}" fill="${fh}"/>${bump.replace('<path ',`<path fill="${fh}" `)}`;
-    if(lit){const rim=rimOf(terms),rc=mix(col,'#ffffff',.8),rw=Math.max(1.4,.06*k);
-      for(const [sd,kk] of [[-1,rim.l],[1,rim.r]]){if(kk<.08)continue;let dpath='';for(let i=0;i<=8;i++){const a2=(-70+i*17.5)*RAD;dpath+=(i?'L':'M')+`${cx+sd*hR*Math.cos(a2)*.97} ${hy+hR*Math.sin(a2)*.97}`}
-        const sh=(sd<0?tL:tR.slice().reverse()).slice(0,4);dpath+='M'+sh.map(v=>`${v[0]-sd*rw*.4} ${v[1]}`).join('L');
-        g+=`<path d="${dpath}" fill="none" stroke="${rc}" stroke-opacity="${(.35+.65*kk).toFixed(2)}" stroke-width="${rw}" stroke-linecap="round" stroke-linejoin="round"/>`}}
+    if(lit){const rim=rimOf(terms),rc=mix(col,'#ffffff',.85);
+      // the figure as one flat shape (stool left out): every fill and stroke colour stripped so the wrapper's colour shows
+      const sil=g.slice(gBody).replace(/ (fill|stroke)="(?!none")[^"]*"/g,'').replace(/ (fill-opacity|stroke-opacity|opacity)="[^"]*"/g,'');
+      for(const [sd,kk] of [[-1,rim.l],[1,rim.r]]){if(kk<.03)continue;const w=Math.max(1.2,(.03+.05*kk)*k),m=`${gid}m${gi++}`;
+        defs+=`<mask id="${m}" maskUnits="userSpaceOnUse" x="0" y="0" width="${Wp}" height="${H}"><g fill="#fff" stroke="#fff" stroke-width="${ow*2}" stroke-linejoin="round">${sil}</g><g fill="#000" stroke="#000" stroke-width="${ow*2}" stroke-linejoin="round" transform="translate(${-sd*w} ${w*.25})">${sil}</g></mask>`;
+        g+=`<rect x="0" y="0" width="${Wp}" height="${H}" fill="${rc}" fill-opacity="${Math.min(1,kk*1.1).toFixed(3)}" mask="url(#${m})"/>`}}
     if(!ghost){const ey=Y(E),er=Math.max(1.2,.045*k),lw=Math.max(.8,k*.024),ink='#2b2622';
       for(const e of [-28,28]){const a2=phi+e*RAD;if(Math.cos(a2)>-.02)g+=`<circle cx="${cx+hR*.8*Math.sin(a2)}" cy="${ey}" r="${er}" fill="${ink}"/>`}
       if(fc>-.15&&!prof){const nx=cx+hR*.85*sn,dir=Math.abs(side)<.05?1:sgn;g+=`<path d="M${nx} ${ey+.04*k}Q${nx+dir*.06*k} ${ey+.13*k},${nx-dir*.005*k} ${ey+.16*k}" fill="none" stroke="${ink}" stroke-width="${lw}" stroke-linecap="round"/>`}}
@@ -1385,7 +1391,7 @@ function renderInsp(){
       h+=`<div class="row"><label>Type<select id="f-shape" data-f="shape">${Object.entries(FURN).map(([k,v])=>`<option value="${k}" ${it.shape===k?'selected':''}>${v.n}</option>`).join('')}</select></label>${field('Label','label',it.label||'')}</div>`;}
     else if(it.kind==='light'||it.kind==='frame'){const cams=inShot(sc).filter(i=>i.kind==='cam'&&!poseAt(i,S.beat).out),cm=cams.find(c=>c.id===S.lastCam)||cams[0];if(cm)h+=`<div class="pvrow"><div class="insp-frame" data-cam="${cm.id}" title="Camera ${esc(cm.name||'')}"></div></div>`}
     if(it.kind==='light'){
-      h+=`<div class="row"><label><span>Output <span data-lv="level">${it.level??70}%</span></span><input type="range" id="f-level" data-f="level" min="0" max="100" step="5" value="${it.level??70}"></label></div>`;
+      h+=`<div class="row"><label><span>Output <span data-lv="level">${it.level??70}%</span></span><input type="range" id="f-level" data-f="level" min="0" max="200" step="5" value="${it.level??70}"></label></div>`;
       if(it.type==='broad')h+=`<div class="row">${field('Face width ft','w',r2(it.w||3),'number','step="0.5" min="0.5"')}${field('Rotate °','r',Math.round(it.r||0),'number','step="5"')}</div>`;
       else h+=`<div class="row"><label><span>Spread <span data-lv="spread">${it.spread||40}°</span></span><input type="range" id="f-spread" data-f="spread" min="10" max="120" step="5" value="${it.spread||40}"></label></div><div class="row">${field('Rotate °','r',Math.round(it.r||0),'number','step="5"')}</div>`;
       h+=`<div class="row"><label>Type<div class="seg"><button data-act="ltype" data-v="point" aria-pressed="${it.type!=='broad'}">Point</button><button data-act="ltype" data-v="broad" aria-pressed="${it.type==='broad'}">Broad</button></div></label>${field('Name','name',it.name||'')}</div>`;}
