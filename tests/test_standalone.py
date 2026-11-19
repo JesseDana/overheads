@@ -29,8 +29,8 @@ def test_runs_without_the_host(browser):
 def test_saves_in_the_browser_and_survives_a_reload(browser):
     ctx, page, errors = open_plain(browser, {'workshop_doc': json.loads(json.dumps(sp.WS))})
     page.evaluate("()=>{const P=window.__shotplans,sc=P.cur();sc.name='Renamed here';P.save(0)}")
-    page.wait_for_timeout(500)
-    page.evaluate("()=>sessionStorage.setItem('seeded','1')")
+    page.wait_for_function("()=>(localStorage.getItem('shotplans:workshop_doc')||'').includes('Renamed here')", timeout=5000)
+    page.wait_for_timeout(1500)  # Chromium commits localStorage to disk in batches; a reload straight after a write can read the old value
     page.reload()
     page.wait_for_timeout(900)
     assert page.evaluate("()=>window.__shotplans.cur().name") == 'Renamed here'

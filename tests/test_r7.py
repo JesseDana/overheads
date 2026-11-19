@@ -182,22 +182,16 @@ def test_phone_long_warning_leaves_controls_reachable(open_app):
     assert b['height'] >= 120 and b['y'] + 120 <= 852, b
 
 
-def test_pictogram_figures_switch(open_app):
-    sc = scene()
-    sc['fig'] = 'picto'
-    app = open_app({'room': sc})
-    app.go(shot='s1')
-    svg = app.js("()=>{const P=window.__shotplans,sc=P.cur();return P.frameInfo(sc,sc.items.find(i=>i.id==='camA'),0,320).svg}")
-    rnd = app.js("()=>{const P=window.__shotplans,sc=P.cur();const f=sc.fig;delete sc.fig;const v=P.frameInfo(sc,sc.items.find(i=>i.id==='camA'),0,320).svg;sc.fig=f;return v}")
-    assert svg != rnd
+def test_pictogram_is_the_only_figure_style(open_app):
+    """the rounded style is gone: every plan draws pictograms, whatever it stored"""
+    sc = facing_scene()
+    sc['fig'] = 'round'
+    app = open_app({'s': sc})
+    assert app.scene()['fig'] == 'picto'
     app.page.click('#layersBtn')
-    app.page.click('#sheet [data-fig="round"]')
     app.wait(150)
-    assert 'fig' not in app.scene()
-    bad = scene()
-    bad['fig'] = '<x>'
-    app2 = open_app({'room': bad})
-    assert 'fig' not in app2.scene()
+    assert app.page.locator('[data-fig]').count() == 0
+    assert not app.errors, app.errors
 
 
 def test_pdf_with_axis_curve_and_pictograms(open_app):
