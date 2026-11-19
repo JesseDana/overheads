@@ -1,0 +1,8 @@
+{
+  "name": "overheads-tests",
+  "private": true,
+  "description": "Test-only dependency: jsPDF served locally to the browser under test",
+  "devDependencies": {
+    "jspdf": "2.5.1"
+  }
+}
