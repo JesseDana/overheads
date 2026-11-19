@@ -4,7 +4,7 @@
 
 Plan camera coverage from overhead and see what each camera frames while you block. Draw the room, put your talent and cameras in it, step through the beats of each shot, and every camera's frame updates as you move things: lens, height, tilt, who's in frame and how they're cut, and how far each person is from the plane of focus.
 
-It's one HTML file. There's no build step, no server and no account. It runs in a browser on a phone, tablet or laptop and saves to that browser.
+It's one HTML file. There's no build step, no server and no account. It runs in a browser on a phone, tablet or laptop, saves to that device, and can be installed as an app that works offline.
 
 ![Overheads on a laptop](docs/screenshot-desktop.png)
 
@@ -12,7 +12,11 @@ It's one HTML file. There's no build step, no server and no account. It runs in 
 
 ## Use it
 
-Open `index.html` in a browser, or the copy published with GitHub Pages. Plans stay in the browser you made them in. To move a plan to another device, use **Share → Plan file**, then **Import plan file…** in the production menu.
+Open it at **https://jessedana.github.io/overheads/**, or open `index.html` from this repo in any browser.
+
+To keep it on your phone as an app: on an iPhone, open the link in Safari, tap **Share**, then **Add to Home Screen**. On Android, open it in Chrome, tap the three-dot menu, then **Add to Home screen** (or **Install app**). It opens full screen, and once it has been opened with a connection it also works with no signal, which helps on set.
+
+Plans are saved in the browser or installed app you made them in, after every change. On an iPhone, the Home Screen app and Safari keep separate storage. To move a plan to another device, or to keep a copy you control, use **Share → Plan file**, then **Import plan file…** in the production menu.
 
 ## What it does
 
